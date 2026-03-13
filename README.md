@@ -98,12 +98,6 @@ These files define:
 Some parameters are marked with the symbol:
 
 ```
-!!
-```
-
-Meaning:
-
-```
 !!  = parameter value recommended by the authors (should not be modified)
 ```
 
