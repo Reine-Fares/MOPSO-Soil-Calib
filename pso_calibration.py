@@ -104,9 +104,9 @@ def eval_raw_costs(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost
     mc = mono_cost_name.lower()
     if status == 0 and qS.size > 1:
         if mc == "nrmse":
-            J_mono = cost_mono_qeps(epsS, qS, eps_exp, q_exp)
+            J_mono = cost_mono_qeps(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "yield":
-            J_mono = cost_mono_yield(epsS, qS, eps_exp, q_exp)
+            J_mono = cost_mono_yield(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "qmax":
             J_mono = cost_mono_qmax(epsS, qS)
         else:
@@ -173,9 +173,9 @@ def eval_particle(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_
     if status == 0 and qS.size > 1:
         mc = mono_cost_name.lower()
         if mc == "nrmse":
-            J_mono = cost_mono_qeps(epsS, qS, eps_exp, q_exp)
+            J_mono = cost_mono_qeps(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "yield":
-            J_mono = cost_mono_yield(epsS, qS, eps_exp, q_exp)
+            J_mono = cost_mono_yield(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "qmax":
             J_mono = cost_mono_qmax(epsS, qS)
             
@@ -246,9 +246,9 @@ def eval_J_only(pars, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_name, mmc=None
     if status == 0 and qS.size > 1:
         mc = mono_cost_name.lower()
         if mc == "nrmse":
-            J_mono = cost_mono_qeps(epsS, qS, eps_exp, q_exp)
+            J_mono = cost_mono_qeps(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "yield":
-            J_mono = cost_mono_yield(epsS, qS, eps_exp, q_exp)
+            J_mono = cost_mono_yield(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "qmax":
             J_mono = cost_mono_qmax(epsS, qS)    
         else : 
@@ -514,4 +514,5 @@ def pso_parallel(
     print(f"  it {it + 1:02d}/{n_iters} | gbest={gbest_cost:.6g}, J_cyc={Jc:.4g}, J_mono={Jm:.4g}, J_tot={J:.4g}")
     print(f"    gbest: h0={gbest_pars['h0']}, ch={gbest_pars['ch']}, A0={gbest_pars['A0']}, z_max={gbest_pars['z_max']}, cz={gbest_pars['cz']}")
     return gbest_pos, gbest_cost, best_artifacts
+
 
