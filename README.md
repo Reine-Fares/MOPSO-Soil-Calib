@@ -89,7 +89,7 @@ https://opensees.github.io/OpenSeesDocumentation
 
 # How to Cite
 If you used MOPSO-Soil-Calib for a scientific paper, please cite it as:
-Fares R., Uzquiano Al-Ricabi F., Lopez Caballero F (2026). MOPSO Soil Calibration, v.1.0. https://doi.org/10.5281/zenodo.19048115
+Fares, R., Uzquiano Al-Ricabi, F., Lopez Caballero, F., 2026. MOPSO-Soil-Calib – Calibration of a Multi-Objective Loss Function Applied to Saturated Soil Constitutive Models. https://doi.org/10.5281/zenodo.1904811
 
 This repository accompanies the following research work:
 
