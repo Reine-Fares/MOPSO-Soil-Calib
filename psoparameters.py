@@ -29,8 +29,8 @@ RESTART_GLOBAL_FRAC = 0.30  # !! Fraction of restarted particles initialized usi
 # =============================================================================
 
 chi = 0.729                 # !! Constriction coefficient used in PSO velocity update
-N_PART = 3 # Number of particles
-N_ITERS = 2 # Number of PSO iterations
+N_PART = 30 # Number of particles
+N_ITERS = 20 # Number of PSO iterations
 SEED=123 # !! Random seed for reproducibility
 VFRAC=0.15 # !! Velocity fraction
 
