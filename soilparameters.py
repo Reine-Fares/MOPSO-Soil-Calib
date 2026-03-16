@@ -46,12 +46,6 @@ materiau_base = dict(
     vR=0.7592,      # initial void ratio
 )
 
-# =============================================================================
-# Solver parameters
-# =============================================================================
-
-dT=0.01     # Initial time step
-dTmin=0.001 # Minimum allowed time step
 
 # =============================================================================
 # Calibrated parameters and bounds
@@ -63,15 +57,22 @@ UP = np.array([30.0, 1.30, 1.00, 100.0, 800.0], float)  # Upper bounds of the se
 BOUNDS = (LOW, UP)  # Tuple used by the optimizer
 PENALTY = 1e12      # !! Applied penalty 
 
-
-# =============================================================================
-# Parameter discretization (snap-to-grid resolution)
-# =============================================================================
-
 STEP = np.array([
     0.1,    # h0
     0.001,  # ch
     0.001,  # A0
     1.0,    # z_max
     1.0,    # cz
-], dtype=float)
+], dtype=float) # Parameter discretization (snap-to-grid resolution)
+
+# =============================================================================
+# Solver parameters
+# =============================================================================
+
+FREQ_HZ = 0.10 # Loading frequency in Hz
+CSR = 0.22 # Cyclic stress ratio
+DEVDISP = -0.17 # Deviatoric displacement
+period = 1.0 / max(FREQ_HZ, 1e-12) # Period
+CYCNUM = 15 # Number of loading cycles
+dT=0.01     # Initial time step
+dTmin=0.001 # Minimum allowed time step
