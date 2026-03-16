@@ -34,7 +34,7 @@ ploting = 0
 BASE = Path(__file__).parent.resolve()
 
 # Root output directory
-OUTROOT = BASE / "sortie"
+OUTROOT = BASE / "output_file"
 OUTROOT.mkdir(parents=True, exist_ok=True)
 
 # ===========================
@@ -61,22 +61,3 @@ ALPHAS = [-0.6]
 
 
 
-# -----------------------------------------------------------------
-# PSO parameters
-# -----------------------------------------------------------------
-
-N_PART = 30 # Number of particles
-N_ITERS = 20 # Number of PSO iterations
-SEED=123 # !! Random seed for reproducibility
-VFRAC=0.15 # !! Velocity fraction
-
-
-# -----------------------------------------------------------------
-# Solver parameters
-# -----------------------------------------------------------------
-
-FREQ_HZ = 0.10 # Loading frequency in Hz
-CSR = 0.22 # Cyclic stress ratio
-DEVDISP = -0.17 # Deviatoric displacement
-period = 1.0 / max(FREQ_HZ, 1e-12) # Period
-CYCNUM = 15 # Number of loading cycles
