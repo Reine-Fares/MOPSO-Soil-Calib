@@ -82,6 +82,7 @@ Depending on the configuration, the code produces:
 OpenSees resources:
 Zhu, M., McKenna, F., & Scott, M. H. (2018). OpenSeesPy: Python library for the OpenSees finite element framework. SoftwareX, 7, 6-11.
 https://doi.org/10.1016/j.softx.2017.10.009
+
 OpenSees documentation:  
 https://opensees.github.io/OpenSeesDocumentation
 
