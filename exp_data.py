@@ -1,8 +1,3 @@
-from pathlib import Path
-import pandas as pd
-import numpy as np
-
-
 """
 Experimental Data Loader
 ========================
@@ -20,10 +15,18 @@ Two datasets are required:
 The functions return sorted arrays and amplitude values used for normalization in cost functions.
 """
 
+from pathlib import Path
+import pandas as pd
+import numpy as np
+
+
 
 # =============================================================================
 # Experimental data file paths
 # =============================================================================
+# Base directory of the current file
+BASE = Path(__file__).parent.resolve()
+
 # Cyclic test data
 # Format: N , u (absolute displacement)
 EXP_CYC_FILE = BASE / "donnees_exp/Cyc200.txt"  
