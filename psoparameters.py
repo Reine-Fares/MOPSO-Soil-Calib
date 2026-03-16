@@ -22,12 +22,23 @@ STAG_ITERS = 5              # !! Number of iterations without improvement before
 RESTART_FRAC = 0.15         # !! Fraction of particles that will be reinitialized during a restart
 RESTART_SIGMA = 0.15        # !! Noise amplitude used when reinitializing particles expressed as a fraction of the search space (upper - lower bounds)
 RESTART_GLOBAL_FRAC = 0.30  # !! Fraction of restarted particles initialized using global exploration
+
+
+# =============================================================================
+# PSO parameters
+# =============================================================================
+
 chi = 0.729                 # !! Constriction coefficient used in PSO velocity update
+N_PART = 3 # Number of particles
+N_ITERS = 2 # Number of PSO iterations
+SEED=123 # !! Random seed for reproducibility
+VFRAC=0.15 # !! Velocity fraction
 
 # =============================================================================
 # warm-up phase
 # =============================================================================
-n_ref = 100 # !! Number of particles 
+
+n_ref = 10 # !! Number of particles 
 
 # =============================================================================
 # Adaptive PSO coefficients
