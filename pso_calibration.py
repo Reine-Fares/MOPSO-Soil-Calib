@@ -7,25 +7,11 @@ This module implements the Particle Swarm Optimization (PSO) used for the calibr
 It provides:
 
     • cost evaluation for cyclic and monotonic tests
-    • normalization of cost components with a warm-up step
+    • normalization of cost components with a warm-up SPA.STEP
     • particle evaluation routines
     • parallel PSO optimization
     • restart strategy for stagnation
 
-Main functions
---------------
-
-compute_global_J
-    Combines normalized cyclic and monotonic costs.
-
-eval_particle
-    Evaluates a particle during PSO optimization.
-
-eval_raw_costs
-    Computes raw cyclic and monotonic costs.
-
-pso_parallel
-    Parallel PSO optimizer used for parameter calibration.
 """
 
 # =============================================================================
@@ -33,10 +19,14 @@ pso_parallel
 # =============================================================================
 
 import numpy as np
-import soilparameters
-import exp_data 
-import psoparameters
-import costfunctions as COF
+from concurrent.futures import ProcessPoolExecutor
+
+import exp_data as EXP 
+import soilparameters as SPA
+import mainparameters as MPA
+import psoparameters as PPA
+
+import cost_functions as COF
 import cyclic_triaxialtest as CTT
 import monotonic_triaxialtest as MTT
 
@@ -49,7 +39,7 @@ def compute_global_J(J_cyc_raw, J_mono, J_cov_pen, w_cyc, w_mono, mmc, sc, mm, s
     Jc_u = (J_cyc_raw - mmc) / (sc + eps)
     Jm_u = (J_mono    - mm ) / (sm + eps)
     J_lin = w_cyc * (Jc_u + J_cov_pen) + w_mono * Jm_u
-    J_tot = BETA1 * J_lin + BETA2 * abs(Jc_u  - Jm_u) 
+    J_tot = MPA.BETA1 * J_lin + MPA.BETA2 * abs(Jc_u  - Jm_u) 
     return float(J_tot), float(Jc_u), float(Jm_u)
 
 # =============================================================================
@@ -57,9 +47,9 @@ def compute_global_J(J_cyc_raw, J_mono, J_cov_pen, w_cyc, w_mono, mmc, sc, mm, s
 # =============================================================================
 
 def eval_raw_costs(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_name):
-    vec = snap_to_grid(np.asarray(vec, float), LOW, UP, STEP)
+    vec = COF.snap_to_grid(np.asarray(vec, float), SPA.LOW, SPA.UP, SPA.STEP)
     pars = dict(base_params)
-    for k, v in zip(PARAM_NAMES, vec):
+    for k, v in zip(SPA.PARAM_NAMES, vec):
         pars[k] = float(v)
 
     
@@ -68,25 +58,24 @@ def eval_raw_costs(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost
     period=cyc_cfg["period"],
     cycNum=cyc_cfg["cycNum"],
     Tcc=cyc_cfg["CSR"],
-    dT,
-    dTmin,
+    dT=SPA.dT,
+    dTmin=SPA.dTmin,
     )
-
 
     # --- raw cyclic cost (NO coverage penalty here) ---
     if status == 0 and Ns.size > 1:
         cc = cyc_cost_name.lower()
         if cc == "rmse":
-            J_cyc = cost_cyc_rmse(Ns, Us, N_exp, u_exp)
+            J_cyc = COF.cost_cyc_rmse(Ns, Us, EXP.N_exp, EXP.u_exp)
         elif cc == "juu":
-            J_cyc = cost_u_rmse_u(Ns, Us, N_exp, u_exp) 
+            J_cyc = COF.cost_u_rmse_u(Ns, Us, EXP.N_exp, EXP.u_exp) 
         elif cc == "avg3":
-            J_cyc = cost_cyc_avg3(Ns, Us, N_exp, u_exp, pars["pConf"])
+            J_cyc = COF.cost_cyc_avg3(Ns, Us, EXP.N_exp, EXP.u_exp, pars["pConf"])
         elif cc == "uN80":
-            J_cyc = cost_N80(Ns, Us, N_exp, u_exp, pars["pConf"])           
+            J_cyc = COF.cost_N80(Ns, Us, EXP.N_exp, EXP.u_exp, pars["pConf"])           
         elif cc in ("n70", "n80", "n90"):
             th = {"n70": 0.7, "n80": 0.8, "n90": 0.9}[cc]
-            J_cyc = cost_cyc_Ntheta(Ns, Us, N_exp, u_exp, pars["pConf"], theta=th)
+            J_cyc = COF.cost_cyc_Ntheta(Ns, Us, EXP.N_exp, EXP.u_exp, pars["pConf"], theta=th)
         else : 
             J_cyc = np.inf
 
@@ -104,11 +93,11 @@ def eval_raw_costs(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost
     mc = mono_cost_name.lower()
     if status == 0 and qS.size > 1:
         if mc == "nrmse":
-            J_mono = cost_mono_qeps(epsS, qS, EXP.eps_exp, EXP.q_exp)
+            J_mono = COF.cost_mono_qeps(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "yield":
-            J_mono = cost_mono_yield(epsS, qS, EXP.eps_exp, EXP.q_exp)
+            J_mono = COF.cost_mono_yield(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "qmax":
-            J_mono = cost_mono_qmax(epsS, qS)
+            J_mono = COF.cost_mono_qmax(epsS, qS)
         else:
             J_mono = np.inf
 
@@ -122,9 +111,9 @@ def eval_raw_costs(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost
 # =============================================================================
 
 def eval_particle(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_name, mmc=None , sc=None ,mm=None, sm=None):
-    vec = snap_to_grid(np.asarray(vec, float), LOW, UP, STEP)
+    vec = COF.snap_to_grid(np.asarray(vec, float), SPA.LOW, SPA.UP, SPA.STEP)
     pars = dict(base_params)
-    for k, v in zip(PARAM_NAMES, np.asarray(vec, float)):
+    for k, v in zip(SPA.PARAM_NAMES, np.asarray(vec, float)):
         pars[k] = float(v)
 
     status, Ns, Us, psc, qsc  = CTT.run_cyclic_triaxial(
@@ -132,40 +121,43 @@ def eval_particle(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_
     period=cyc_cfg["period"],
     cycNum=cyc_cfg["cycNum"],
     Tcc=cyc_cfg["CSR"],
-    dT,
-    dTmin,
+    dT=SPA.dT,
+    dTmin=SPA.dTmin,
     )
+    
     if status == 0 and Ns.size > 1:
         cc = cyc_cost_name.lower()
         if cc == "rmse":
-            J_cyc_raw  = cost_cyc_rmse(Ns, Us, N_exp, u_exp)
+            J_cyc_raw  = COF.cost_cyc_rmse(Ns, Us, EXP.N_exp, EXP.u_exp)
             J_cov_pen = 0.0
         elif cc == "juu":
-            J_cyc = cost_u_rmse_u(Ns, Us, N_exp, u_exp) 
+            J_cyc = COF.cost_u_rmse_u(Ns, Us, EXP.N_exp, EXP.u_exp) 
             J_cov_pen = 0.0
         elif cc == "avg3":
-            J_cyc = cost_cyc_avg3(Ns, Us, N_exp, u_exp, pars["pConf"])
+            J_cyc = COF.cost_cyc_avg3(Ns, Us, EXP.N_exp, EXP.u_exp, pars["pConf"])
             J_cov_pen = 0.0
         elif cc == "uN80":
-            J_cyc = cost_N80(Ns, Us, N_exp, u_exp, pars["pConf"])
+            J_cyc = COF.cost_N80(Ns, Us, EXP.N_exp, EXP.u_exp, pars["pConf"])
             J_cov_pen = 0.0            
         elif cc in ("n70", "n80", "n90"):
             th = {"n70": 0.7, "n80": 0.8, "n90": 0.9}[cc]
-            J_cyc = cost_cyc_Ntheta(Ns, Us, N_exp, u_exp, pars["pConf"], theta=th)
+            J_cyc = COF.cost_cyc_Ntheta(Ns, Us, EXP.N_exp, EXP.u_exp, pars["pConf"], theta=th)
             J_cov_pen = 0.0
         else : 
+            J_cov_pen = np.inf
             J_cyc_raw  = np.inf
             
         N_target = float(cyc_cfg["cycNum"])   # 17
         N_reached = float(np.max(Ns)) if Ns.size else 0.0
         cov = N_reached / max(N_target, 1e-12)
         
-        Ncyc80 = Nref_N80(N_exp, u_exp, pars["pConf"], 0.8)
+        Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, pars["pConf"], 0.8)
         covref = Ncyc80 / max(N_target, 1e-12) * 1.1
 
         if cov < covref:
             J_cov_pen = 50.0 * ((covref - cov) / covref) ** 2
     else:
+        J_cov_pen = np.inf
         J_cyc_raw = np.inf
         
 
@@ -173,11 +165,11 @@ def eval_particle(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_
     if status == 0 and qS.size > 1:
         mc = mono_cost_name.lower()
         if mc == "nrmse":
-            J_mono = cost_mono_qeps(epsS, qS, EXP.eps_exp, EXP.q_exp)
+            J_mono = COF.cost_mono_qeps(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "yield":
-            J_mono = cost_mono_yield(epsS, qS, EXP.eps_exp, EXP.q_exp)
+            J_mono = COF.cost_mono_yield(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "qmax":
-            J_mono = cost_mono_qmax(epsS, qS)
+            J_mono = COF.cost_mono_qmax(epsS, qS)
             
         else : 
             J_mono = np.inf
@@ -190,7 +182,7 @@ def eval_particle(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_
     J, Jc_used, Jm_used = compute_global_J(J_cyc_raw, J_mono, J_cov_pen, w_cyc, w_mono, mmc , sc ,mm , sm )
     
     if not np.isfinite(J):
-        J = PENALTY
+        J = np.inf
     return float(J), float(Jc_used), float(Jm_used), pars, (Ns, Us), (epsS, qS) ,(psc,qsc)
 
 # =============================================================================
@@ -204,36 +196,38 @@ def eval_J_only(pars, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_name, mmc=None
     period=cyc_cfg["period"],
     cycNum=cyc_cfg["cycNum"],
     Tcc=cyc_cfg["CSR"],
-    dT,
-    dTmin,
+    dT=SPA.dT,
+    dTmin=SPA.dTmin,
     )
+    
     if status == 0 and Ns.size > 1:
         cc = cyc_cost_name.lower()
         if cc == "rmse":
-            J_cyc_raw  = cost_cyc_rmse(Ns, Us, N_exp, u_exp)
+            J_cyc_raw  = COF.cost_cyc_rmse(Ns, Us, EXP.N_exp, EXP.u_exp)
             J_cov_pen = 0.0
         elif cc == "juu":
-            J_cyc = cost_u_rmse_u(Ns, Us, N_exp, u_exp) 
+            J_cyc = COF.cost_u_rmse_u(Ns, Us, EXP.N_exp, EXP.u_exp) 
             J_cov_pen = 0.0
         elif cc == "avg3":
-            J_cyc = cost_cyc_avg3(Ns, Us, N_exp, u_exp, pars["pConf"])
+            J_cyc = COF.cost_cyc_avg3(Ns, Us, EXP.N_exp, EXP.u_exp, pars["pConf"])
             J_cov_pen = 0.0
         elif cc == "uN80":
-            J_cyc = cost_N80(Ns, Us, N_exp, u_exp, pars["pConf"])
+            J_cyc = COF.cost_N80(Ns, Us, EXP.N_exp, EXP.u_exp, pars["pConf"])
             J_cov_pen = 0.0            
         elif cc in ("n70", "n80", "n90"):
             th = {"n70": 0.7, "n80": 0.8, "n90": 0.9}[cc]
-            J_cyc = cost_cyc_Ntheta(Ns, Us, N_exp, u_exp, pars["pConf"], theta=th)
+            J_cyc = COF.cost_cyc_Ntheta(Ns, Us, EXP.N_exp, EXP.u_exp, pars["pConf"], theta=th)
             J_cov_pen = 0.0            
  
         else : 
+            J_cov_pen = np.inf
             J_cyc_raw  = np.inf
             
         N_target = float(cyc_cfg["cycNum"])   # 17
         N_reached = float(np.max(Ns)) if Ns.size else 0.0
         cov = N_reached / max(N_target, 1e-12)
         
-        Ncyc80 = Nref_N80(N_exp, u_exp, pars["pConf"], 0.8)
+        Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, pars["pConf"], 0.8)
         covref = Ncyc80 / max(N_target, 1e-12) * 1.1
 
         if cov < covref:
@@ -246,11 +240,11 @@ def eval_J_only(pars, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_name, mmc=None
     if status == 0 and qS.size > 1:
         mc = mono_cost_name.lower()
         if mc == "nrmse":
-            J_mono = cost_mono_qeps(epsS, qS, EXP.eps_exp, EXP.q_exp)
+            J_mono = COF.cost_mono_qeps(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "yield":
-            J_mono = cost_mono_yield(epsS, qS, EXP.eps_exp, EXP.q_exp)
+            J_mono = COF.cost_mono_yield(epsS, qS, EXP.eps_exp, EXP.q_exp)
         elif mc == "qmax":
-            J_mono = cost_mono_qmax(epsS, qS)    
+            J_mono = COF.cost_mono_qmax(epsS, qS)    
         else : 
             J_mono = np.inf
     else: J_mono =np.inf
@@ -286,12 +280,12 @@ def pso_parallel(
     low, up = np.asarray(bounds[0]), np.asarray(bounds[1])
     d = len(low)
     pos = rng.uniform(low, up, size=(n_particles, d))
-    pos = snap_to_grid(pos, low, up, STEP)
+    pos = COF.snap_to_grid(pos, low, up, SPA.STEP)
 
     # --- warm-up refs 
-    # n_ref = 100 # increase to stabilize ref estimates
-    ref_pos = rng.uniform(low, up, size=(n_ref, d))
-    ref_pos = snap_to_grid(ref_pos, low, up, STEP)
+    # PPA.n_ref = 100 # increase to stabilize ref estimates
+    ref_pos = rng.uniform(low, up, size=(PPA.n_ref, d))
+    ref_pos = COF.snap_to_grid(ref_pos, low, up, SPA.STEP)
     
     with ProcessPoolExecutor(max_workers=max_workers) as ex:
         futs = [
@@ -304,7 +298,7 @@ def pso_parallel(
                 cyc_cost_name,
                 mono_cost_name,
             )
-            for i in range(n_ref)
+            for i in range(PPA.n_ref)
         ]
         res0 = [f.result() for f in futs]
     
@@ -316,12 +310,12 @@ def pso_parallel(
     
     N_target = float(cyc_cfg["cycNum"])
     pars = dict(base_params)
-    Ncyc80 = Nref_N80(N_exp, u_exp, pars["pConf"], 0.8)
+    Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, pars["pConf"], 0.8)
     covref = Ncyc80 / max(N_target, 1e-12) * 1.1
     
     good_cyc  = np.isfinite(Jc0) & (Jc0 < 1e6) & (cov0 >= covref)
     good_mono = np.isfinite(Jm0) & (Jm0 < 1e6)
-    print(f"[warmup] good_cyc={good_cyc.sum()}/{n_ref}, good_mono={good_mono.sum()}/{n_ref}")
+    print(f"[warmup] good_cyc={good_cyc.sum()}/{PPA.n_ref}, good_mono={good_mono.sum()}/{PPA.n_ref}")
     
     def robust_center_scale(x, min_n=10):
         x = np.asarray(x, float)
@@ -368,9 +362,9 @@ def pso_parallel(
     def schedule(t, T):
 
         T = max(T - 1, 1)
-        w = w_max - (w_max - w_min) * t / T
-        c1 = c1_max - (c1_max - c1_min) * t / T
-        c2 = c2_min + (c2_max - c2_min) * t / T
+        w = PPA.w_max - (PPA.w_max - PPA.w_min) * t / T
+        c1 = PPA.c1_max - (PPA.c1_max - PPA.c1_min) * t / T
+        c2 = PPA.c2_min + (PPA.c2_max - PPA.c2_min) * t / T
         lower = 0.5 * (c1 + c2) - 1.0
         if w <= lower:
             w = lower + 1e-3
@@ -416,14 +410,14 @@ def pso_parallel(
         # print only some iterations to avoid huge logs
         if it < 5 or (it + 1) % 5 == 0 or it == n_iters - 1:
             print("[spread] current swarm:")
-            for j, name in enumerate(PARAM_NAMES):
+            for j, name in enumerate(SPA.PARAM_NAMES):
                 v = pos[:, j]
                 print(
                     f"  {name}: min={v.min():.4g} p10={np.percentile(v,10):.4g} "
                     f"med={np.median(v):.4g} p90={np.percentile(v,90):.4g} max={v.max():.4g}"
                 )
             print("[spread] ever visited (since init):")
-            for j, name in enumerate(PARAM_NAMES):
+            for j, name in enumerate(SPA.PARAM_NAMES):
                 print(f"  {name}: min_seen={min_seen[j]:.4g} max_seen={max_seen[j]:.4g}")        
         
         
@@ -435,7 +429,7 @@ def pso_parallel(
         if gbest_pos is None or pbest_cost[i_min] < gbest_cost:
             gbest_cost = float(pbest_cost[i_min])
             gbest_pos = pbest_pos[i_min].copy()
-            gbest_pos = snap_to_grid(gbest_pos, low, up, STEP)
+            gbest_pos = COF.snap_to_grid(gbest_pos, low, up, SPA.STEP)
             
         if gbest_cost + 2e-4 < best_so_far:
             best_so_far = gbest_cost
@@ -451,34 +445,34 @@ def pso_parallel(
         r1 = np.random.rand(n_particles, d)
         r2 = np.random.rand(n_particles, d)
         
-        vel = chi* ( w * vel + c1 * r1 * (pbest_pos - pos) + c2 * r2 * (gbest_pos - pos))
+        vel = PPA.chi* ( w * vel + c1 * r1 * (pbest_pos - pos) + c2 * r2 * (gbest_pos - pos))
         vel = np.clip(vel, -vmax, vmax)
 
         prev_pos = pos.copy()
-        pos = snap_to_grid(prev_pos + vel, low, up, STEP)
+        pos = COF.snap_to_grid(prev_pos + vel, low, up, SPA.STEP)
 
         # optionnel mais fortement recommandé: recaler la vitesse sur le déplacement réellement appliqué
         vel = pos - prev_pos
         
         
-        if no_improve >= STAG_ITERS:
-            n_restart = int(max(1, round(RESTART_FRAC * n_particles)))
+        if no_improve >= PPA.STAG_ITERS:
+            n_restart = int(max(1, round(PPA.RESTART_FRAC * n_particles)))
         
             order = np.argsort(pbest_cost)                 # ascending (best first)
             restart_idx = order[n_particles - n_restart :]
         
             # Split restarts: local around gbest + global uniform
-            n_global = int(round(RESTART_GLOBAL_FRAC * n_restart))
+            n_global = int(round(PPA.RESTART_GLOBAL_FRAC * n_restart))
             n_local = n_restart - n_global
         
             # Local: Gaussian around gbest
             center = gbest_pos.copy()
-            noise = rng.normal(0.0, RESTART_SIGMA, size=(n_local, d)) * (up - low)
-            new_local = snap_to_grid(center + noise, low, up, STEP)
+            noise = rng.normal(0.0, PPA.RESTART_SIGMA, size=(n_local, d)) * (up - low)
+            new_local = COF.snap_to_grid(center + noise, low, up, SPA.STEP)
         
             # Global: Uniform over full bounds
             if n_global > 0:
-                new_global = snap_to_grid(rng.uniform(low, up, size=(n_global, d)), low, up, STEP)
+                new_global = COF.snap_to_grid(rng.uniform(low, up, size=(n_global, d)), low, up, SPA.STEP)
                 new_pos = np.vstack([new_local, new_global])
             else:
                 new_pos = new_local
@@ -500,7 +494,7 @@ def pso_parallel(
                 
                 
         
-        gbest_pars = dict(zip(PARAM_NAMES, gbest_pos))
+        gbest_pars = dict(zip(SPA.PARAM_NAMES, gbest_pos))
         print(f"  it {it+1:02d}/{n_iters} | gbest={gbest_cost:.6g} | no_improve={no_improve}")
         print(f"    gbest: h0={gbest_pars['h0']}, ch={gbest_pars['ch']}, A0={gbest_pars['A0']}, z_max={gbest_pars['z_max']}, cz={gbest_pars['cz']}")
 
@@ -510,9 +504,8 @@ def pso_parallel(
     )
     if J < best_artifacts["J"]:
         best_artifacts.update(dict(J=J, pars=pars, N=Ns, u=Us, eps=epsS, q=qS, psc=psc, qsc=qsc))
-    gbest_pars = dict(zip(PARAM_NAMES, gbest_pos))
+    gbest_pars = dict(zip(SPA.PARAM_NAMES, gbest_pos))
     print(f"  it {it + 1:02d}/{n_iters} | gbest={gbest_cost:.6g}, J_cyc={Jc:.4g}, J_mono={Jm:.4g}, J_tot={J:.4g}")
     print(f"    gbest: h0={gbest_pars['h0']}, ch={gbest_pars['ch']}, A0={gbest_pars['A0']}, z_max={gbest_pars['z_max']}, cz={gbest_pars['cz']}")
     return gbest_pos, gbest_cost, best_artifacts
-
 
