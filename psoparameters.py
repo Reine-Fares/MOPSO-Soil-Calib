@@ -38,7 +38,7 @@ VFRAC=0.15 # !! Velocity fraction
 # warm-up phase
 # =============================================================================
 
-n_ref = 10 # !! Number of particles 
+n_ref = 100 # !! Number of particles 
 
 # =============================================================================
 # Adaptive PSO coefficients
