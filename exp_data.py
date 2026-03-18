@@ -34,7 +34,7 @@ EXP_CYC_FILE = BASE / "donnees_exp/Cyc200.txt"
 # Format: eps1[%] , q[kPa]
 EXP_MONO_FILE = BASE / "donnees_exp/MonoCD200.txt"  
 
-
+LIQ = 0. # !! 0. if the experimental data reaches liquefaction
 # =============================================================================
 # Cyclic experimental data
 # =============================================================================
