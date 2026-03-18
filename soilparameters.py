@@ -74,5 +74,5 @@ CSR = 0.22 # Cyclic stress ratio
 DEVDISP = -0.17 # Deviatoric displacement
 period = 1.0 / max(FREQ_HZ, 1e-12) # Period
 CYCNUM = 15 # Number of loading cycles
-dT=0.01     # Initial time step
-dTmin=0.001 # Minimum allowed time step
+dT=0.01     # Initial time step (recommended value for repeatability is 0.001)
+dTmin=0.001 # Minimum allowed time step (recommended value for repeatability is 0.0001)
