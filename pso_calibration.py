@@ -156,7 +156,7 @@ def eval_particle(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_
         else :
             u_scalar = float(EXP.u_exp.max())
             bounded_u = min(u_scalar , pars["pConf"])
-            Ncyc80 = Nref_N80(EXP.N_exp, EXP.u_exp, bounded_u , 0.8)
+            Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, bounded_u , 0.8)
         covref = Ncyc80 / max(N_target, 1e-12) * 1.1
 
         if cov < covref:
@@ -237,7 +237,7 @@ def eval_J_only(pars, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_name, mmc=None
         else :
             u_scalar = float(EXP.u_exp.max())
             bounded_u = min(u_scalar , pars["pConf"])
-            Ncyc80 = Nref_N80(EXP.N_exp, EXP.u_exp, bounded_u , 0.8)
+            Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, bounded_u , 0.8)
             
         covref = Ncyc80 / max(N_target, 1e-12) * 1.1
 
@@ -327,7 +327,7 @@ def pso_parallel(
     else :
         u_scalar = float(EXP.u_exp.max())
         bounded_u = min(u_scalar , pars["pConf"])
-        Ncyc80 = Nref_N80(EXP.N_exp, EXP.u_exp, bounded_u , 0.8)
+        Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, bounded_u , 0.8)
     covref = Ncyc80 / max(N_target, 1e-12) * 1.1
     
     good_cyc  = np.isfinite(Jc0) & (Jc0 < 1e6) & (cov0 >= covref)
