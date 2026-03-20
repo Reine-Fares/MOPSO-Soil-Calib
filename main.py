@@ -149,9 +149,9 @@ def main():
                 )
                 
                 
-            print(
-                f" → α={alpha:+.2f}: J_cyc={J_cyc_rep:.4g}, J_mono={J_mono_rep:.4g}, J_tot={J_tot_rep:.4g}"
-            )
+                print(
+                    f" → α={alpha:+.2f}: J_cyc={J_cyc_rep:.4g}, J_mono={J_mono_rep:.4g}, J_tot={J_tot_rep:.4g}"
+                )
 
             # -----------------------------------------------------------------
             # Data export
