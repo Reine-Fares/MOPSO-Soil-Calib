@@ -152,10 +152,10 @@ def eval_particle(vec, base_params, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_
         cov = N_reached / max(N_target, 1e-12)
 
         if EXP.LIQ == 0 : 
-            Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, pars["pConf"], 0.8)
+            Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp,  abs(pars["pConf"]), 0.8)
         else :
             u_scalar = float(EXP.u_exp.max())
-            bounded_u = min(u_scalar , pars["pConf"])
+            bounded_u = min(u_scalar ,  abs(pars["pConf"]))
             Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, bounded_u , 0.8)
         covref = Ncyc80 / max(N_target, 1e-12) * 1.1
 
@@ -233,10 +233,10 @@ def eval_J_only(pars, cyc_cfg, mono_cfg, cyc_cost_name, mono_cost_name, mmc=None
         cov = N_reached / max(N_target, 1e-12)
         
         if EXP.LIQ == 0 : 
-            Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, pars["pConf"], 0.8)
+            Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp,  abs(pars["pConf"]), 0.8)
         else :
             u_scalar = float(EXP.u_exp.max())
-            bounded_u = min(u_scalar , pars["pConf"])
+            bounded_u = min(u_scalar ,  abs(pars["pConf"]))
             Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, bounded_u , 0.8)
             
         covref = Ncyc80 / max(N_target, 1e-12) * 1.1
@@ -323,10 +323,10 @@ def pso_parallel(
     N_target = float(cyc_cfg["cycNum"])
     pars = dict(base_params)
     if EXP.LIQ == 0 : 
-        Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, pars["pConf"], 0.8)
+        Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp,  abs(pars["pConf"]), 0.8)
     else :
         u_scalar = float(EXP.u_exp.max())
-        bounded_u = min(u_scalar , pars["pConf"])
+        bounded_u = min(u_scalar ,  abs(pars["pConf"]))
         Ncyc80 = COF.Nref_N80(EXP.N_exp, EXP.u_exp, bounded_u , 0.8)
     covref = Ncyc80 / max(N_target, 1e-12) * 1.1
     
